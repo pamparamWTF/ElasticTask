@@ -1,0 +1,34 @@
+﻿<Window x:Class="ElasticTask.ElasticWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ElasticTask"
+        mc:Ignorable="d"
+        Title="Elastic Task" Height="450" Width="800">
+    <Grid>
+        <Menu Height="17" VerticalAlignment="Top">
+            <MenuItem Header="File" HorizontalAlignment="Center">
+                <MenuItem Header="Save" Click="ClickMenuSave"></MenuItem>
+                <MenuItem Header="Save As New..." Click="ClickMenuSaveAs"></MenuItem>
+                <Separator />
+                <MenuItem Header="Open" Click="ClickMenuOpen">
+                </MenuItem>
+        <Separator />
+                <MenuItem Header="Exit" Click="ClickMenuExit"></MenuItem>
+                
+            </MenuItem>
+            <MenuItem Header="Model">
+                <MenuItem Header="Geometry" Click="ClickMenuGeometry"></MenuItem>
+                <MenuItem Header="Mesh" Click="ClickMenuMesh"></MenuItem>
+            </MenuItem>
+        </Menu>
+        <Button x:Name="BuildMeshButton" Content="BuildMesh" HorizontalAlignment="Right" Margin="0,22,10,0" VerticalAlignment="Top" Width="92" Height="34" Click="BuildMeshButton_Click"/>
+        <Button Content="Button" HorizontalAlignment="Left" Margin="283,71,0,0" VerticalAlignment="Top" Click="Button_Click"/>
+        <TextBox x:Name="tb1" HorizontalAlignment="Left" Margin="85,72,0,0" TextWrapping="Wrap" Text="x" VerticalAlignment="Top" Width="52"/>
+        <TextBox x:Name="tb2" HorizontalAlignment="Left" Margin="158,72,0,0" TextWrapping="Wrap" Text="y" VerticalAlignment="Top" Width="52"/>
+        <TextBox x:Name="num1" HorizontalAlignment="Left" Margin="85,102,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="52"/>
+        <TextBox x:Name="num2" HorizontalAlignment="Left" Margin="158,102,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="52"/>
+
+    </Grid>
+</Window>

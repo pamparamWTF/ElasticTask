@@ -1,0 +1,24 @@
+﻿<Window x:Class="ElasticTask.MeshWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ElasticTask"
+        mc:Ignorable="d"
+        Title="MeshWindow" Height="139" Width="400" ResizeMode="NoResize">
+    <Grid>
+        <Label Content="Step by X" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top"/>
+        <Label Content="Step by Y" HorizontalAlignment="Left" Margin="10,33,0,0" VerticalAlignment="Top"/>
+        <Label Content="Step by Z" HorizontalAlignment="Left" Margin="10,56,0,0" VerticalAlignment="Top"/>
+        <Label Content="Discharge factor by X" HorizontalAlignment="Left" Margin="150,10,0,0" VerticalAlignment="Top"/>
+        <Label Content="Discharge factor by Y" HorizontalAlignment="Left" Margin="150,33,0,0" VerticalAlignment="Top"/>
+        <Label Content="Discharge factor by Z" HorizontalAlignment="Left" Margin="150,56,0,0" VerticalAlignment="Top"/>
+        <TextBox x:Name="hXTextBox" HorizontalAlignment="Left" Margin="75,14,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="70" Text="{Binding Path=hX}"/>
+        <TextBox x:Name="hYTextBox" HorizontalAlignment="Left" Margin="75,37,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="70" Text="{Binding Path=hY}"/>
+        <TextBox x:Name="hZTextBox" HorizontalAlignment="Left" Margin="75,60,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="70" Text="{Binding Path=hZ}"/>
+        <TextBox x:Name="kXTextBox" HorizontalAlignment="Left" Margin="277,14,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="70" Text="{Binding Path=kX}"/>
+        <TextBox x:Name="kYTextBox" HorizontalAlignment="Left" Margin="277,37,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="70" Text="{Binding Path=kY}"/>
+        <TextBox x:Name="kZTextBox" HorizontalAlignment="Left" Margin="277,60,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="70" Text="{Binding Path=kZ}"/>
+
+    </Grid>
+</Window>

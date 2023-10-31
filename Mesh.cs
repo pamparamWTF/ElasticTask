@@ -7,6 +7,10 @@ using System.Windows;
 
 namespace ElasticTask
 {
+    public class SLAE
+    {
+
+    }
     public class GeometryData
     {
         public GeometryData(int N) 
@@ -50,7 +54,11 @@ namespace ElasticTask
         public double[,] Dmatrix { get; set; }
         public void BuildD()
         {
-            Dmatrix = new double [6, 6];
+            Dmatrix = CalcD();
+        }
+        public double[,] CalcD()
+        {
+            double[,] matrix = new double [6, 6];
 
             if (isotropie)
             {
@@ -63,13 +71,14 @@ namespace ElasticTask
 
                 for (int i = 0; i < 6; i++)
                 {
-                    if (i < 3) Dmatrix[i, i] = diagD;
-                    else Dmatrix[i, i] = G;
+                    if (i < 3) matrix[i, i] = diagD;
+                    else matrix[i, i] = G;
                     for (int j = 0; j < 6; j++)
-                        if (i < 3 && j < 3 && i!=j) Dmatrix[i, j] = ggluD;
-                        else if (i != j) Dmatrix[i, j] = 0;
+                        if (i < 3 && j < 3 && i!=j) matrix[i, j] = ggluD;
+                        else if (i != j) matrix[i, j] = 0;
                 }
             }
+            return matrix;
         }
     }
     public class MeshCoefs
@@ -93,8 +102,11 @@ namespace ElasticTask
     public class Elements
     {
         public List<Element> elements { get; set; }
-        public Elements(Mesh mesh)
+        //private GeometryData geometryData;
+        private double[,] D;
+        public Elements(Mesh mesh, double[,] D)
         {
+            this.D = D;
             elements = new List<Element>();
             BuildElements(mesh);
         }
@@ -304,6 +316,37 @@ namespace ElasticTask
                 return i / 4;
             }
         }
+        private double[,] CalcAbloc(int i, int j, Element element)
+        {
+            double[,] Ablock = new double[3, 3];
+
+            double hx = element.hx(),
+                hy = element.hz(),
+                hz = element.hz(),
+                Kx = element.Kx(i, j, hx, hy, hz),
+                Ky = element.Ky(i, j, hx, hy, hz),
+                Kz = element.Kz(i, j, hx, hy, hz),
+                Kxy = element.Kxy(i, j, hx, hy, hz),
+                Kxz = element.Kxz(i, j, hx, hy, hz),
+                Kyx = element.Kyz(i, j, hx, hy, hz),
+                Kyz = element.Kyz(i, j, hx, hy, hz),
+                Kzx = element.Kzx(i, j, hx, hy, hz),
+                Kzy = element.Kzy(i, j, hx, hy, hz);
+
+            Ablock[0, 0] = D[0, 0] * Kx + D[3, 3] * Ky + D[5, 5] * Kz;
+            Ablock[0, 1] = D[0, 1] * Kxy + D[3, 3] * Kyx;
+            Ablock[0, 2] = D[0, 2] * Kxz + D[3, 3] * Kzx;
+
+            Ablock[1, 0] = D[1, 0] * Kyx + D[3, 3] * Kxy;
+            Ablock[1, 1] = D[3, 3] * Kx + D[1, 1] * Ky + D[4, 4] * Kz;
+            Ablock[1, 2] = D[1, 2] * Kyz + D[4, 4] * Kzy;
+
+            Ablock[2, 0] = D[2, 0] * Kzx + D[5, 5] * Kxz;
+            Ablock[2, 1] = D[2, 1] * Kzy + D[4, 4] * Kyz;
+            Ablock[2, 2] = D[5, 5] * Kx + D[4, 4] * Ky + D[2,2] * Kz;
+
+            return Ablock;
+        }
         public void BuildElements(Mesh mesh)
         {
             int Nx = mesh.BigMesh[0].isMesh.Count - 1,
@@ -331,6 +374,30 @@ namespace ElasticTask
                                 mesh.BigMesh[2].isMesh[k + localIelem / 4]));
                         }
                     }
+        }
+        public void BuildGlobalMatrix()
+        {
+            int n = elements.Count();
+            double[,] Abloc = new double[3,3];
+
+            for (int elem = 0; elem < n; elem++)
+            {
+                List<List<double>> A_loc = new List<List<double>>();
+                for (int i = 0; i < 8; i++)
+                {
+                    for (int ii = 0; ii < 3; ii++)
+                        A_loc.Add(new List<double>());
+                    
+                    for (int j = 0; j < 8; j++)
+                    {
+                        Abloc = CalcAbloc(i, j, elements[elem]);
+                        
+                        for (int ii = 0; ii < 3; ii++)
+                            for (int jj = 0; jj < 3; jj++) 
+                                A_loc[i + ii].Add(Abloc[ii, jj]);
+                    }
+                }
+            }
         }
     }
     public class Mesh

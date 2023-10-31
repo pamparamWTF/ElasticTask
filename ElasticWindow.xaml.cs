@@ -146,7 +146,9 @@ namespace ElasticTask
 
                 model.mesh.BuildMesh3D();
 
-                elements = new Elements(model.mesh);
+                model.ListOfGeometry[N].BuildD();
+
+                elements = new Elements(model.mesh, model.ListOfGeometry[N].Dmatrix);
 
                 //System.Windows.Forms.MessageBox.Show(elements.elements[0].Ky(0, 0, elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
                 ////+ " " +

@@ -29,6 +29,7 @@ namespace ElasticTask
             this.SizeToContent = SizeToContent.Width;
             this.geometryData = geometryData;
             this.DataContext = geometryData;
+
             GeometryData.ItemsSource = this.geometryData;
 
         }

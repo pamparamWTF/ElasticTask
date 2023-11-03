@@ -29,25 +29,32 @@ namespace ElasticTask
         string path = "";
         GeometryWindow GeometryWindow;
         MeshWindow MeshWindow;
+        BoundaryConditionWindow BoundaryConditionWindow;
         Elements elements;
+        Mesh mesh;
+        SLAE slae;
         public struct Model
         {
-            public Model(ObservableCollection<GeometryData> ListOfGeometry, Mesh mesh, MeshCoefs meshCoefs)
+            public Model(ObservableCollection<GeometryData> ListOfGeometry, MeshCoefs meshCoefs, ObservableCollection<BoundaryCoefs> ListOfBoundaryCoefs)
             {
                 this.ListOfGeometry = ListOfGeometry;
-                this.mesh = mesh;
+                //this.mesh = mesh;
                 this.meshCoefs = meshCoefs;
+                this.ListOfBoundaryCoefs = ListOfBoundaryCoefs;
             }
             public ObservableCollection<GeometryData> ListOfGeometry;
-            public Mesh mesh;
+            //public Mesh mesh;
             public MeshCoefs meshCoefs;
+            public ObservableCollection<BoundaryCoefs> ListOfBoundaryCoefs;
         }
-        Model model = new(new ObservableCollection<GeometryData>() { new GeometryData(1) }, new Mesh(1, 1, 1, new MeshCoefs(1, 1, 1, 1, 1, 1)), new MeshCoefs(1, 1, 1, 1, 1, 1));
+        Model model = new(new ObservableCollection<GeometryData>() { new GeometryData(1) }, new MeshCoefs(1, 1, 1, 1, 1, 1), new ObservableCollection<BoundaryCoefs>() { new BoundaryCoefs(0, 1, 0, 0, 0)});
 
         public ElasticWindow()
         {
             InitializeComponent();
             model.ListOfGeometry[0].OnModel = true;
+            for (int i = 1; i < 6; i++) 
+                model.ListOfBoundaryCoefs.Add(new BoundaryCoefs(i, 2, 0, 0, 0));
         }
         private void ClickMenuMesh(object sender, RoutedEventArgs e)
         {
@@ -66,9 +73,15 @@ namespace ElasticTask
             bool? diaRes = GeometryWindow.ShowDialog();
 
             if (diaRes.HasValue && diaRes.Value)
-            {
                 model.ListOfGeometry = GeometryWindow.geometryData;
-            }
+        }
+        private void ClickMenuBoundary(object sender, RoutedEventArgs e)
+        {
+            BoundaryConditionWindow = new BoundaryConditionWindow(ref model.ListOfBoundaryCoefs);
+            bool? diaRes = BoundaryConditionWindow.ShowDialog();
+
+            if (diaRes.HasValue && diaRes.Value)
+                model.ListOfBoundaryCoefs = BoundaryConditionWindow.ListOfBoundaryCoefs;
         }
         private void SaveModelAs()
         {
@@ -83,9 +96,7 @@ namespace ElasticTask
             if (path == "")
                 System.Windows.Forms.MessageBox.Show("Error! Could not save model.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             else
-            {
                 SaveModel(path); 
-            }
         }
         private void SaveModel(string path)
         {
@@ -131,6 +142,7 @@ namespace ElasticTask
                 return;
 
             int count = 0, N = 0;
+
             foreach (var geometry in model.ListOfGeometry)
                 if (geometry.OnModel) { count++; N = geometry.N - 1; }
 
@@ -138,83 +150,80 @@ namespace ElasticTask
                 System.Windows.Forms.MessageBox.Show("Error! Could not build mesh. Please check \"Model -> Geometry\" and enter only one geometry.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             else
             {
-                model.mesh = new Mesh(
+                mesh = new Mesh(
                     model.ListOfGeometry[N].SizeX,
                     model.ListOfGeometry[N].SizeY,
                     model.ListOfGeometry[N].SizeZ,
                     model.meshCoefs);
 
-                model.mesh.BuildMesh3D();
+                mesh.BuildMesh3D();
 
-                model.ListOfGeometry[N].BuildD();
+                elements = new Elements(mesh, model.ListOfGeometry[N].CalcD());
 
-                elements = new Elements(model.mesh, model.ListOfGeometry[N].Dmatrix);
+                elements.BuildBoundaryConditions(mesh, model.ListOfBoundaryCoefs);
 
-                //System.Windows.Forms.MessageBox.Show(elements.elements[0].Ky(0, 0, elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
-                ////+ " " +
-                ////    elements.elements[0].Kx(0, 1).ToString() + " " +
-                ////    elements.elements[0].Kx(0, 2).ToString() + " " +
-                ////    elements.elements[0].Kx(0, 3).ToString() + " " +
-                ////    elements.elements[0].Kx(0, 4).ToString() + " " +
-                ////    elements.elements[0].Kx(0, 5).ToString() + " " +
-                ////    elements.elements[0].Kx(0, 6).ToString() + " " +
-                ////    elements.elements[0].Kx(0, 7).ToString());
+                //double buf = elements.boundaryConditions[0].elements2D[5].BoundaryIntegral(0, elements.boundaryConditions[0].Ngran, 1, 1, 1);
 
-                SaveModel(path);
+                slae = new SLAE(elements, mesh);
             }
         }
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            string s = tb1.Text + tb2.Text;
-            switch (s)
-            {
-                case "xx":
-                    {
-                        System.Windows.Forms.MessageBox.Show(elements.elements[0].Kx(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
-                        break;
-                    }
-                case "yy":
-                    {
-                        System.Windows.Forms.MessageBox.Show(elements.elements[0].Ky(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
-                        break;
-                    }
-                case "zz":
-                    {
-                        System.Windows.Forms.MessageBox.Show(elements.elements[0].Kz(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
-                        break;
-                    }
-                case "xy":
-                    {
-                        System.Windows.Forms.MessageBox.Show(elements.elements[0].Kxy(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
-                        break;
-                    }
-                case "xz":
-                    {
-                        System.Windows.Forms.MessageBox.Show(elements.elements[0].Kxz(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
-                        break;
-                    }
-                case "yx":
-                    {
-                        System.Windows.Forms.MessageBox.Show(elements.elements[0].Kyx(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
-                        break;
-                    }
-                case "yz":
-                    {
-                        System.Windows.Forms.MessageBox.Show(elements.elements[0].Kyz(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
-                        break;
-                    }
-                case "zx":
-                    {
-                        System.Windows.Forms.MessageBox.Show(elements.elements[0].Kzx(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
-                        break;
-                    }
-                case "zy":
-                    {
-                        System.Windows.Forms.MessageBox.Show(elements.elements[0].Kzy(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
-                        break;
-                    }
-            }
+            return;
+            //elements.BuildBoundaryConditions(model.mesh, int.Parse(num1.Text), 2, new List<double>() { 1, 2, 3 });
+
+            //string s = tb1.Text + tb2.Text;
+            //switch (s)
+            //{
+            //    case "xx":
+            //        {
+            //            System.Windows.Forms.MessageBox.Show(elements.elements[0].Kx(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
+            //            break;
+            //        }
+            //    case "yy":
+            //        {
+            //            System.Windows.Forms.MessageBox.Show(elements.elements[0].Ky(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
+            //            break;
+            //        }
+            //    case "zz":
+            //        {
+            //            System.Windows.Forms.MessageBox.Show(elements.elements[0].Kz(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
+            //            break;
+            //        }
+            //    case "xy":
+            //        {
+            //            System.Windows.Forms.MessageBox.Show(elements.elements[0].Kxy(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
+            //            break;
+            //        }
+            //    case "xz":
+            //        {
+            //            System.Windows.Forms.MessageBox.Show(elements.elements[0].Kxz(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
+            //            break;
+            //        }
+            //    case "yx":
+            //        {
+            //            System.Windows.Forms.MessageBox.Show(elements.elements[0].Kyx(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
+            //            break;
+            //        }
+            //    case "yz":
+            //        {
+            //            System.Windows.Forms.MessageBox.Show(elements.elements[0].Kyz(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
+            //            break;
+            //        }
+            //    case "zx":
+            //        {
+            //            System.Windows.Forms.MessageBox.Show(elements.elements[0].Kzx(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
+            //            break;
+            //        }
+            //    case "zy":
+            //        {
+            //            System.Windows.Forms.MessageBox.Show(elements.elements[0].Kzy(int.Parse(num1.Text), int.Parse(num2.Text), elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
+            //            break;
+            //        }
+            //}
+
+
             //System.Windows.Forms.MessageBox.Show(elements.elements[0].Ky(0, 0, elements.elements[0].hx(), elements.elements[0].hy(), elements.elements[0].hz()).ToString());
             //+ " " +
             //    elements.elements[0].Kx(0, 1).ToString() + " " +

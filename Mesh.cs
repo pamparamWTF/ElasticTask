@@ -1,16 +1,33 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Xml.Linq;
 
 namespace ElasticTask
 {
-    public class SLAE
+    public class BoundaryCoefs
     {
+        public int Ngran { get; set; }
+        public int Type { get; set; }
+        public double Px { get; set; }
+        public double Py { get; set; }
+        public double Pz { get; set; }
 
+        public BoundaryCoefs(int Ngran, int Type, double Px, double Py, double Pz)
+        {
+            this.Ngran = Ngran;
+            this.Type = Type;
+            this.Px = Px;
+            this.Py = Py;
+            this.Pz = Pz;
+        }
     }
+
     public class GeometryData
     {
         public GeometryData(int N) 
@@ -102,17 +119,21 @@ namespace ElasticTask
     public class Elements
     {
         public List<Element> elements { get; set; }
-        //private GeometryData geometryData;
+        public List<BoundaryConditions> boundaryConditions { get; set; }
+        
         private double[,] D;
+        
         public Elements(Mesh mesh, double[,] D)
         {
             this.D = D;
             elements = new List<Element>();
+            boundaryConditions = new List<BoundaryConditions>();
             BuildElements(mesh);
         }
-        public class Coord_Node //класс для хранения координат
+
+        public class CoordNode //класс для хранения координат
         {
-            public Coord_Node (double X, double Y, double Z)
+            public CoordNode (double X, double Y, double Z)
             {
                 this.X = X;
                 this.Y = Y;
@@ -127,10 +148,10 @@ namespace ElasticTask
             public Element()
             {
                 Node_global = new List<int>();
-                coord_Nodes_In_Elemet = new List<Coord_Node>();
+                coord_Nodes_In_Elemet = new List<CoordNode>();
             }
             public List<int> Node_global { get; set; }
-            public List<Coord_Node> coord_Nodes_In_Elemet { get; set; }
+            public List<CoordNode> coord_Nodes_In_Elemet { get; set; }
             public double hx()
             {
                 return coord_Nodes_In_Elemet[1].X - coord_Nodes_In_Elemet[0].X;
@@ -148,9 +169,61 @@ namespace ElasticTask
                 if (i == 0) return -1;
                 else return 1;
             }
-            private double IntegratingFunction(int i, int j, char c1, char c2, double h, double x)
+            private double IntegratingFunction(int i, int j, char c1, char c2, double h, double x, bool flag = false)
             {
                 double psi1, psi2;
+                if (flag)
+                {
+                    switch (c1)
+                    {
+                        case 'x':
+                            {
+                                if (i == 0)
+                                    psi1 = (coord_Nodes_In_Elemet[1].X - x) / h;
+                                else
+                                    psi1 = (x - coord_Nodes_In_Elemet[0].X) / h;
+
+                                return psi1;
+                            }
+                        case 'y':
+                            {
+                                switch (c2)
+                                {
+                                    case 'x':
+                                        {
+                                            if (i == 0)
+                                                psi1 = (coord_Nodes_In_Elemet[2].Y - x) / h;
+                                            else
+                                                psi1 = (x - coord_Nodes_In_Elemet[0].Y) / h;
+
+                                            return psi1;
+                                        }
+                                    case 'z':
+                                        {
+                                            if (i == 0)
+                                                psi1 = (coord_Nodes_In_Elemet[1].Y - x) / h;
+                                            else
+                                                psi1 = (x - coord_Nodes_In_Elemet[0].Y) / h;
+
+                                            return psi1;
+
+                                        }
+                                    default: return 0;
+                                }
+                            }
+                        case 'z':
+                            {
+                                if (i == 0)
+                                    psi1 = (coord_Nodes_In_Elemet[2].Z - x) / h;
+                                else
+                                    psi1 = (x - coord_Nodes_In_Elemet[0].Z) / h;
+
+                                return psi1;
+                            }
+                        default: return 0;
+                    }
+                }
+
                 switch (c1)
                 {
                     case 'x':
@@ -217,7 +290,7 @@ namespace ElasticTask
                 }
                 return psi1 * psi2;
             }
-            private double IntegralSimpson(double a, double b, int i, int j, char c1, char c2, double _h)
+            private double IntegralSimpson(double a, double b, int i, int j, char c1, char c2, double _h, bool flag = false)
             {
                 int n = 1;
                 double h = b - a;
@@ -227,7 +300,11 @@ namespace ElasticTask
                     double x1 = a + k * h;
                     double x2 = a + (k + 1) * h;
 
-                    integral += ((x2 - x1) / 6) * (IntegratingFunction(i, j, c1, c2, _h, x1) + 4 * IntegratingFunction(i, j, c1, c2, _h, (x1 + x2) / 2) + IntegratingFunction(i, j, c1, c2, _h, x2));
+                    if (!flag)
+                        integral += ((x2 - x1) / 6) * (IntegratingFunction(i, j, c1, c2, _h, x1) + 4 * IntegratingFunction(i, j, c1, c2, _h, (x1 + x2) / 2) + IntegratingFunction(i, j, c1, c2, _h, x2));
+                    else
+                        integral += ((x2 - x1) / 6) * (IntegratingFunction(i, j, c1, c2, _h, x1, true) + 4 * IntegratingFunction(i, j, c1, c2, _h, (x1 + x2) / 2, true) + IntegratingFunction(i, j, c1, c2, _h, x2, true));
+
                 }
                 return integral;
             }
@@ -315,6 +392,186 @@ namespace ElasticTask
             {
                 return i / 4;
             }
+            public double BoundaryIntegral(int i, int Ngran, double hx, double hy, double hz)
+            {
+                //if (Ngran == 0 || Ngran == 1)
+                {
+                    double integralY = IntegralSimpson(coord_Nodes_In_Elemet[0].Y, coord_Nodes_In_Elemet[1].Y, mu(i), 0, 'y', 'z', hy, true);
+                    double integralZ = IntegralSimpson(coord_Nodes_In_Elemet[0].Z, coord_Nodes_In_Elemet[2].Z, nu(i), 0, 'z', 'z', hz, true);
+
+                    return integralY * integralZ;
+                }
+                
+                //double integral1 = IntegralSimpson(a1, a2, i, j, c1, c2, h1);
+                //double integral2 = IntegralSimpson(b1, b2, i, j, c1, c2, h2);
+
+                //return integral1 * integral2;
+            }
+        }
+        public class BoundaryConditions
+        {
+            public int type { get; set; }
+            public int Ngran {  get; set; }
+            public List<double> P {  get; set; }
+            public double Px {  get; set; }
+            public double Py {  get; set; }
+            public double Pz {  get; set; }
+            public List<Element> elements2D { get; set; }
+            public BoundaryConditions(Mesh mesh, int Ngran, int type, double Px, double Py, double Pz)
+            {
+                elements2D = new List<Element>();
+                this.Ngran = Ngran;
+                this.type = type;
+                this.Px = Px;
+                this.Py = Py;
+                this.Pz = Pz;
+
+                BuildElements2D(mesh);
+            }
+            private int GetGlobalNode(int [] paramVec, int NX, int NY)
+            {
+                return paramVec[0] + (paramVec[1] + paramVec[2] * NY) * NX;
+            }
+            private void UpdateIndexVec(ref int[] indexVec, bool[] paramVec, int constIndex, int j , int k, bool isFirst, int localIndex)
+            {
+                if (!isFirst)
+                {
+                    bool flag = false;
+                    for (int i = 0; i < 3; i++)
+                        if (paramVec[i])
+                        {
+                            if (!flag)
+                            {
+                                flag = true;
+                                indexVec[i] = j;
+                            }
+                            else
+                                indexVec[i] = k;
+                        }
+                        else
+                            indexVec[i] = constIndex;
+                }
+                else
+                {
+                    bool flag = false;
+                    for (int i = 0; i < 3; i++)
+                        if (paramVec[i])
+                        {
+                            if (!flag)
+                            {
+                                flag = true;
+                                indexVec[i] += localIndex % 2;
+                            }
+                            else
+                                indexVec[i] += localIndex / 2;
+                        }
+                        else
+                            indexVec[i] = constIndex;
+
+                }
+
+
+            }
+            private void BuildBoundaryElements(int Nup, int Ndown, int Nx, int Ny, bool[] paramVec, int constIndex, Mesh mesh)
+            {
+                int[] indexVec = new int[3];
+                int[] bufIndexVec = new int[3];
+
+                for (int i = 0; i < 3; i++)
+                    if (!paramVec[i])
+                        indexVec[i] = constIndex;
+
+                int index, node;
+                for (int k = 0; k < Nup - 1; k++)
+                    for (int j = 0; j < Ndown - 1; j++)
+                    {
+                        UpdateIndexVec(ref indexVec, paramVec, constIndex, j, k, false, 0);
+                        for (int i = 0; i < 3; i++)
+                            bufIndexVec[i] = indexVec[i];
+
+                        index = j + k * (Ndown - 1);
+
+                        elements2D.Add(new Element());
+
+                        for (int localIelem = 0; localIelem < 4; localIelem++)
+                        {
+                            for (int i = 0; i < 3; i++)
+                                indexVec[i] = bufIndexVec[i];
+
+                            UpdateIndexVec(ref indexVec, paramVec, constIndex, j, k, true, localIelem);
+                            
+                            node = GetGlobalNode(indexVec, Nx, Ny);
+
+                            for (int localIblock = 0; localIblock < 3; localIblock++)
+                                elements2D[index].Node_global.Add(3 * node + localIblock);
+
+                            elements2D[index].coord_Nodes_In_Elemet.Add(new CoordNode(mesh.BigMesh[0].isMesh[indexVec[0]], mesh.BigMesh[1].isMesh[indexVec[1]], mesh.BigMesh[2].isMesh[indexVec[2]]));
+
+                        }
+
+                    }
+
+            }
+            private void BuildElements2D(Mesh mesh)
+            {
+                bool[] paramVec;
+                switch (Ngran)
+                {
+                    case 0:
+                        {
+                            paramVec = new bool[3] { false, true, true};
+                            BuildBoundaryElements(mesh.BigMesh[2].isMesh.Count, mesh.BigMesh[1].isMesh.Count, mesh.BigMesh[0].isMesh.Count, mesh.BigMesh[1].isMesh.Count, paramVec, 0, mesh);
+                            break;
+                        }                    
+                    case 1:
+                        {
+                            paramVec = new bool[3] { false, true, true };
+                            BuildBoundaryElements(mesh.BigMesh[2].isMesh.Count, mesh.BigMesh[1].isMesh.Count, mesh.BigMesh[0].isMesh.Count, mesh.BigMesh[1].isMesh.Count, paramVec, mesh.BigMesh[0].isMesh.Count - 1, mesh);
+                            break;
+                        }
+                    case 2:
+                        {
+                            paramVec = new bool[3] { true, false, true };
+                            BuildBoundaryElements(mesh.BigMesh[2].isMesh.Count, mesh.BigMesh[0].isMesh.Count, mesh.BigMesh[0].isMesh.Count, mesh.BigMesh[1].isMesh.Count, paramVec, 0, mesh);
+                            break;
+                        }
+                    case 3:
+                        {
+                            paramVec = new bool[3] { true, false, true };
+                            BuildBoundaryElements(mesh.BigMesh[2].isMesh.Count, mesh.BigMesh[0].isMesh.Count, mesh.BigMesh[0].isMesh.Count, mesh.BigMesh[1].isMesh.Count, paramVec, mesh.BigMesh[1].isMesh.Count - 1, mesh);
+                            break;
+                        }
+                    case 4:
+                        {
+                            paramVec = new bool[3] { true, true, false };
+                            BuildBoundaryElements(mesh.BigMesh[1].isMesh.Count, mesh.BigMesh[0].isMesh.Count, mesh.BigMesh[0].isMesh.Count, mesh.BigMesh[1].isMesh.Count, paramVec, 0, mesh);
+
+                            break;
+                        }
+                    case 5:
+                        {
+                            paramVec = new bool[3] { true, true, false };
+                            BuildBoundaryElements(mesh.BigMesh[1].isMesh.Count, mesh.BigMesh[0].isMesh.Count, mesh.BigMesh[0].isMesh.Count, mesh.BigMesh[1].isMesh.Count, paramVec, mesh.BigMesh[2].isMesh.Count - 1, mesh);
+                            break;
+                        }
+                    default:
+                        {
+                            MessageBox.Show("Error! Number of Boundary is not correct!");
+                            break;
+                        }
+                }
+            }
+        }
+
+        public void BuildBoundaryConditions(Mesh mesh, ObservableCollection<BoundaryCoefs> boundaryCoefs)
+        {
+            foreach (BoundaryCoefs bc in boundaryCoefs)
+            {
+                if (bc.Type == 2 && bc.Px == 0 && bc.Py == 0 && bc.Pz == 0)
+                    continue;
+                
+                boundaryConditions.Add(new BoundaryConditions(mesh, bc.Ngran, bc.Type, bc.Px, bc.Py, bc.Pz));
+            }
         }
         private double[,] CalcAbloc(int i, int j, Element element)
         {
@@ -368,37 +625,66 @@ namespace ElasticTask
                                 node = 3 * ((i + localIelem % 2) + ((j + (localIelem / 2) % 2) + (k + localIelem / 4) * (Ny + 1)) * (Nx + 1)) + localIblock;
                                 elements[index].Node_global.Add(node);
                             }
-                            elements[index].coord_Nodes_In_Elemet.Add(new Coord_Node(
+                            elements[index].coord_Nodes_In_Elemet.Add(new CoordNode(
                                 mesh.BigMesh[0].isMesh[i + localIelem % 2],
                                 mesh.BigMesh[1].isMesh[j + (localIelem / 2) % 2],
                                 mesh.BigMesh[2].isMesh[k + localIelem / 4]));
                         }
                     }
         }
-        public void BuildGlobalMatrix()
+        public void BuildGlobalMatrix(int[] ig, int[] jg, ref double[] di, ref double[] ggl)
         {
-            int n = elements.Count();
-            double[,] Abloc = new double[3,3];
+            double[,] Abloc;
 
-            for (int elem = 0; elem < n; elem++)
+            foreach (Element element in elements)
             {
                 List<List<double>> A_loc = new List<List<double>>();
+                for (int i = 0; i < 24; i++)
+                {
+                    A_loc.Add(new List<double>());
+                    for (int j = 0; j < 24; j++)
+                        A_loc[i].Add(0);
+                }
+
                 for (int i = 0; i < 8; i++)
                 {
-                    for (int ii = 0; ii < 3; ii++)
-                        A_loc.Add(new List<double>());
-                    
                     for (int j = 0; j < 8; j++)
                     {
-                        Abloc = CalcAbloc(i, j, elements[elem]);
-                        
+                        Abloc = CalcAbloc(i, j, element);
+
                         for (int ii = 0; ii < 3; ii++)
-                            for (int jj = 0; jj < 3; jj++) 
-                                A_loc[i + ii].Add(Abloc[ii, jj]);
+                            for (int jj = 0; jj < 3; jj++)
+                                A_loc[3 * i + ii][3 * j + jj] += Abloc[ii, jj];
                     }
                 }
+                AddToMatrix(A_loc, element, ig, jg, ref di, ref ggl);
             }
         }
+        private void AddToMatrix(List<List<double>> A_loc, Element element, int[] ig, int[] jg, ref double[] di, ref double[] ggl)//функция для внесения локальных элементов матрицы в глобальную
+        {
+            List<int> L = element.Node_global;
+            int n_loc = element.Node_global.Count;
+
+            for (int i = 0; i < n_loc; i++)
+            {
+                di[L[i]] += A_loc[i][i];
+            }
+
+            for (int i = 0; i < n_loc; i++)
+            {
+                int temp = ig[L[i]];
+                for (int j = 0; j < i; j++)
+                    for (int k = temp; k < ig[L[i] + 1]; k++)
+                    {
+                        if (jg[k] == L[j])
+                        {
+                            ggl[k] += A_loc[i][j];
+                            break;
+                        }
+                    }
+            }
+        }
+
     }
     public class Mesh
     {

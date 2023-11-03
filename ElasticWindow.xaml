@@ -16,11 +16,11 @@
                 </MenuItem>
         <Separator />
                 <MenuItem Header="Exit" Click="ClickMenuExit"></MenuItem>
-                
             </MenuItem>
             <MenuItem Header="Model">
                 <MenuItem Header="Geometry" Click="ClickMenuGeometry"></MenuItem>
                 <MenuItem Header="Mesh" Click="ClickMenuMesh"></MenuItem>
+                <MenuItem Header="Boundary Condition" Click="ClickMenuBoundary"></MenuItem>
             </MenuItem>
         </Menu>
         <Button x:Name="BuildMeshButton" Content="BuildMesh" HorizontalAlignment="Right" Margin="0,22,10,0" VerticalAlignment="Top" Width="92" Height="34" Click="BuildMeshButton_Click"/>
